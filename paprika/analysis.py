@@ -35,6 +35,8 @@ class fe_calc(object):
         Dictionary containing collected trajectory values for the relevant restraints and windows
     methods : {list}
         List of analysis methods to be performed (e.g., MBAR, TI, ...)
+    fractions : {list}
+        List containing fraction of data to analyze (defaul is [1.0] for all the data)
     bootcycles : int
         Number of bootstrap iterations for the TI methods.
     quick_ti_matrix : bool
@@ -302,17 +304,19 @@ class fe_calc(object):
         Deltaf_ij_fractions = np.zeros((len(fractions), len(N_k), len(N_k)))
         dDeltaf_ij_fractions = np.zeros((len(fractions), len(N_k), len(N_k)))
         Theta_ij_fractions = np.zeros((len(fractions), len(N_k), len(N_k)))
+        N_k_fractions = np.zeros((len(fractions), len(N_k), len(N_k)))
 
         for fraction_index, fraction in enumerate(fractions):
             log.debug('Analyzing fraction: {}'.format(fraction))
             if fraction <= 0 or fraction > 1:
                 raise Exception('Fraction of data to analyze cannot be less than 0 or more than 1.')
-            N_fraction_k = np.array([int(i) for i in fraction * N_k])
-            mbar = pymbar.MBAR(u_kln, N_fraction_k, verbose=verbose)
+            N_k_fraction = np.array([int(i) for i in fraction * N_k])
+            mbar = pymbar.MBAR(u_kln, N_k_fraction, verbose=verbose)
             Deltaf_ij, dDeltaf_ij, Theta_ij = mbar.getFreeEnergyDifferences(compute_uncertainty=True)
             Deltaf_ij_fractions[fraction_index] = Deltaf_ij
             dDeltaf_ij_fractions[fraction_index] = dDeltaf_ij
             Theta_ij_fractions[fraction_index] = Theta_ij
+            N_k_fractions[fraction_index] = N_k_fraction
 
         # Should I subsample based on the restraint coordinate values? Here I'm
         # doing it on the potential.  Should be pretty close ....
@@ -359,7 +363,7 @@ class fe_calc(object):
 
         # This should return an array of matrices of free energies and uncertainties for each fraction
         # of the data analyzed.
-        return Deltaf_ij_fractions, dDeltaf_ij_fractions
+        return Deltaf_ij_fractions, dDeltaf_ij_fractions, N_k_fractions
 
     def _run_ti(self, phase, prepared_data):
         """
@@ -531,7 +535,6 @@ class fe_calc(object):
                     log.debug('Skipping free energy calculation for %s' % phase)
                     break
                 prepared_data = self._prepare_data(phase)
-                self.results[phase][method]['n_frames'] = np.sum(prepared_data[1])
 
                 log.debug("Running {} analysis on {} phase ...".format(method, phase))
 
@@ -539,25 +542,32 @@ class fe_calc(object):
                 if method == 'mbar-block':
                     if len(self.fractions) > 1:
                         self.results[phase][method]['fraction'] = {}
-                        free_energies, sems = self._run_mbar(prepared_data, fractions=self.fractions)
-                        for fraction, energy, sem in zip(self.fractions, free_energies, sems):
+                        free_energies, sems, N_k_fractions = self._run_mbar(prepared_data, fractions=self.fractions)
+                        for fraction, free_energy, sem, N_k in zip(self.fractions, free_energies, sems, N_k_fractions):
                             self.results[phase][method]['fraction'][fraction] = {}
-                            self.results[phase][method]['fraction'][fraction]['fe'] = energy[0, -1]
+                            self.results[phase][method]['fraction'][fraction]['fe'] = free_energy[0, -1]
                             self.results[phase][method]['fraction'][fraction]['sem'] = sem[0, -1]
+                            self.results[phase][method]['fraction'][fraction]['n_frames'] = int(np.sum(N_k))
 
                     else:
-                        self.results[phase][method]['fe_matrix'], self.results[phase][method][
-                            'sem_matrix'] = self._run_mbar(prepared_data)
+                        self.results[phase][method]['fe_matrix'], 
+                        self.results[phase][method]['sem_matrix'], 
+                        self.results[phase][method]['n_frames'] = self._run_mbar(prepared_data)
                 elif method == 'ti-block':
                     self.results[phase][method]['fe_matrix'], self.results[phase][method]['sem_matrix'] = self._run_ti(
                         phase, prepared_data)
                 else:
                     raise Exception("The method '{}' is not valid for compute_free_energy".format(method))
 
-                if len(self.fractions) == 1:
+                if len(self.fractions) > 1:
+                    log.debug('Storing the last fractional free energy and sem in the top level...')
+                    self.results[phase][method]['fe'] = self.results[phase][method]['fe_matrix'][0, -1]
+                    self.results[phase][method]['sem'] = self.results[phase][method]['sem_matrix'][0, -1]
+                else:
                     # Store endpoint free energy and SEM
                     self.results[phase][method]['fe'] = self.results[phase][method]['fe_matrix'][0, -1]
                     self.results[phase][method]['sem'] = self.results[phase][method]['sem_matrix'][0, -1]
+
 
                     # Store convergence values, which are helpful for running simulations
                     windows = len(self.results[phase][method]['sem_matrix'])
