@@ -549,51 +549,57 @@ class fe_calc(object):
                             self.results[phase][method]['fraction'][fraction]['sem'] = sem[0, -1]
                             self.results[phase][method]['fraction'][fraction]['n_frames'] = int(np.sum(N_k))
 
+                        # Store the last free energy matrix and SEM matrix at the top level of the
+                        # results dictionary.
+                        log.debug('Storing the last fractional free energy and SEM in the top level...')
+                        self.results[phase][method]['fe_matrix'] = free_energy
+                        self.results[phase][method]['sem_matrix'] = sem
+                        self.results[phase][method]['n_frames'] = int(np.sum(N_k))
+
                     else:
-                        self.results[phase][method]['fe_matrix'], 
-                        self.results[phase][method]['sem_matrix'], 
-                        self.results[phase][method]['n_frames'] = self._run_mbar(prepared_data)
+                        fe_matrix, sem_matrix, n_frames = self._run_mbar(prepared_data)
+
+                        self.results[phase][method]['fe_matrix'] = fe_matrix[0] 
+                        self.results[phase][method]['sem_matrix'] = sem_matrix[0] 
+                        self.results[phase][method]['n_frames'] = n_frames[0]
+
+                        # Store endpoint free energy and SEM
+                        self.results[phase][method]['fe'] = self.results[phase][method]['fe_matrix'][0, -1]
+                        self.results[phase][method]['sem'] = self.results[phase][method]['sem_matrix'][0, -1]
+
                 elif method == 'ti-block':
                     self.results[phase][method]['fe_matrix'], self.results[phase][method]['sem_matrix'] = self._run_ti(
                         phase, prepared_data)
                 else:
                     raise Exception("The method '{}' is not valid for compute_free_energy".format(method))
 
-                if len(self.fractions) > 1:
-                    log.debug('Storing the last fractional free energy and sem in the top level...')
-                    self.results[phase][method]['fe'] = self.results[phase][method]['fe_matrix'][0, -1]
-                    self.results[phase][method]['sem'] = self.results[phase][method]['sem_matrix'][0, -1]
-                else:
-                    # Store endpoint free energy and SEM
-                    self.results[phase][method]['fe'] = self.results[phase][method]['fe_matrix'][0, -1]
-                    self.results[phase][method]['sem'] = self.results[phase][method]['sem_matrix'][0, -1]
 
 
-                    # Store convergence values, which are helpful for running simulations
-                    windows = len(self.results[phase][method]['sem_matrix'])
-                    self.results[phase][method]['convergence'] = np.ones([windows], np.float64) * -1.0
-                    self.results[phase][method]['ordered_convergence'] = np.ones([windows], np.float64) * -1.0
-                    log.info(phase + ': computing convergence for ' + method)
-                    for i in range(windows):
-                        if i == 0:
-                            self.results[phase][method]['ordered_convergence'][i]\
-                                = self.results[phase][method]['sem_matrix'][i][i+1]
-                        elif i == windows - 1:
-                            self.results[phase][method]['ordered_convergence'][i]\
-                                = self.results[phase][method]['sem_matrix'][i][i-1]
+                # Store convergence values, which are helpful for running simulations
+                windows = len(self.results[phase][method]['sem_matrix'])
+                self.results[phase][method]['convergence'] = np.ones([windows], np.float64) * -1.0
+                self.results[phase][method]['ordered_convergence'] = np.ones([windows], np.float64) * -1.0
+                log.info(phase + ': computing convergence for ' + method)
+                for i in range(windows):
+                    if i == 0:
+                        self.results[phase][method]['ordered_convergence'][i]\
+                            = self.results[phase][method]['sem_matrix'][i][i+1]
+                    elif i == windows - 1:
+                        self.results[phase][method]['ordered_convergence'][i]\
+                            = self.results[phase][method]['sem_matrix'][i][i-1]
+                    else:
+                        left = self.results[phase][method]['sem_matrix'][i][i - 1]
+                        right = self.results[phase][method]['sem_matrix'][i][i + 1]
+                        if left > right:
+                            max_val = left
+                        elif right > left:
+                            max_val = right
                         else:
-                            left = self.results[phase][method]['sem_matrix'][i][i - 1]
-                            right = self.results[phase][method]['sem_matrix'][i][i + 1]
-                            if left > right:
-                                max_val = left
-                            elif right > left:
-                                max_val = right
-                            else:
-                                max_val = right
-                            self.results[phase][method]['ordered_convergence'][i] = max_val
+                            max_val = right
+                        self.results[phase][method]['ordered_convergence'][i] = max_val
 
-                    self.results[phase][method]['convergence'] = \
-                        [self.results[phase][method]['ordered_convergence'][i] for i in self.orders[phase]]
+                self.results[phase][method]['convergence'] = \
+                    [self.results[phase][method]['ordered_convergence'][i] for i in self.orders[phase]]
 
     def compute_ref_state_work(self, restraints):
         """
