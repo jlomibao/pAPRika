@@ -1,11 +1,11 @@
-name: paprika
+name: paprika-dev
 channels:
   - anaconda
   - omnia
   - ambermd
 dependencies:
   - python=3.6
-  - anaconda::numpy=1.13.3
+  - anaconda::numpy
   - anaconda::scipy=1.0.0
   - anaconda::matplotlib=2.0.2
   - anaconda::ipykernel=4.8.0
@@ -18,4 +18,4 @@ dependencies:
   - omnia::pymbar
   - pip
   - pip:
-    - git+https://github.com/slochower/pAPRika.git@e269f7d92103d9f887bc164eaf3bbf85c518aa20
+    - git+https://github.com/jlomibao/pAPRika.git@f5e9d31e28b83410ce1847fa69cd149a2ff21a62
