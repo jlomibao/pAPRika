@@ -2,7 +2,6 @@ from paprika import tleap
 from paprika import align
 from paprika import dummy
 from paprika import restraints
-from paprika import openmm
 from paprika.restraints import static_DAT_restraint
 from paprika.restraints import DAT_restraint
 from paprika.restraints import create_window_list
@@ -223,12 +222,18 @@ for index, atoms in enumerate(guest_restraint_atoms):
     this.initialize()
     guest_restraints.append(this)
 
-
 restraints = static_restraints
 
 for i, atom in enumerate(structure.atoms):
     if atom.name == 'DUM':
         atom.mass=0.0
+
+from simtk.openmm.app import *
+from simtk.openmm import *
+import simtk.openmm.openmm as mm
+from simtk.unit import *
+from sys import stdout
+from mdtraj.reporters import NetCDFReporter
 
 topology = "cb6-but-0m_dum.prmtop"
 coordinates = "cb6-but-0m_dum.rst7"
@@ -237,13 +242,6 @@ structure.save(struct_dir+'/'+coordinates, overwrite=True)
 
 prmtop = AmberPrmtopFile(struct_dir+'/'+topology)
 inpcrd = AmberInpcrdFile(struct_dir+'/'+coordinates)
-
-from simtk.openmm.app import *
-from simtk.openmm import *
-import simtk.openmm.openmm as mm
-from simtk.unit import *
-from sys import stdout
-from mdtraj.reporters import NetCDFReporter
 
 system = prmtop.createSystem(
     nonbondedMethod=NoCutoff,
@@ -258,9 +256,11 @@ integrator = LangevinIntegrator(
     0.002*picoseconds
 )
 
-opmm_sim = openmm.OpenMM_GB_simulation()
+from paprika.openmm import *
 
-openmm.add_openmm_restraints(opmm_sim,system,restraints,"attach",1)
+opmm_sim = OpenMM_GB_simulation()
+
+OpenMM_GB_simulation.add_openmm_restraints(opmm_sim,system,restraints,"attach",1)
 
 simulation = Simulation(prmtop.topology, system, integrator, mm.Platform.getPlatformByName('Reference'))
 simulation.context.setPositions(inpcrd.positions)
@@ -270,7 +270,7 @@ if inpcrd.boxVectors is not None:
 
 simulation.minimizeEnergy()
 #simulation.reporters.append(PDBReporter('cb6-but_output.pdb', 500))
-simulation.reporters.append(NetCDFReporter('cb6-but-dum_output_6rest.nc', 500))
+simulation.reporters.append(NetCDFReporter('paprika_openmm_test.nc', 500))
 simulation.reporters.append(
     StateDataReporter(
         stdout, 500,
