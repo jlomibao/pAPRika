@@ -217,7 +217,7 @@ for index, atoms in enumerate(guest_restraint_atoms):
     this.pull['num_windows'] = windows[1]
 
     this.release['target'] = guest_restraint_targets[index]
-    this.release['fraction_list'] = 15*[1.0]#release_fractions
+    this.release['fraction_list'] = release_fractions
 
     this.initialize()
     guest_restraints.append(this)
@@ -246,7 +246,7 @@ inpcrd = AmberInpcrdFile(struct_dir+'/'+coordinates)
 system = prmtop.createSystem(
     nonbondedMethod=NoCutoff,
     constraints=HBonds,
-    implicitSolventSaltConc=0.1*moles/liter
+    implicitSolventSaltConc=0.1*moles/liter #may want to use 0.0
 )
 
 
