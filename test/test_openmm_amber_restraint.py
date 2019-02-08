@@ -7,8 +7,8 @@ from simtk.openmm.app import *
 from simtk.openmm import *
 import simtk.openmm.openmm as mm
 from simtk.unit import *
-from sys import stdout
 from mdtraj.reporters import NetCDFReporter
+from sys import stdout
 import pytraj as pt
 import numpy as np
 import os
@@ -158,10 +158,21 @@ def openmm_minimize(hasRestraints=False):
         structure = pmd.load_file(work_dir+'/'+window+'/'+topology_file,
                                   work_dir+'/'+window+'/'+coordinate_file)
 
+        # Create Positional Restraints
+        pos_rest = mm.CustomExternalForce("k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
+        pos_rest.addGlobalParameter("k",50.0*kilocalories_per_mole/angstroms**2)
+        pos_rest.addPerParticleParameter("x0")
+        pos_rest.addPerParticleParameter("y0")
+        pos_rest.addPerParticleParameter("z0")
+        for i, atom in enumerate(structure.positions):
+            if structure.atoms[i].name == 'DUM':
+                pos_rest.addParticle(i, atom.value_in_unit(nanometers))
+
         for i, atom in enumerate(structure.atoms):
             if atom.name == 'DUM':
                 atom.mass = 0.0
 
+        structure.save(work_dir+'/'+window+'/'+file_prefix+'-0m.prmtop',overwrite=True)
         sim = OpenMM_GB_simulation()
         settings = {
             "platform": "CPU",
@@ -173,25 +184,29 @@ def openmm_minimize(hasRestraints=False):
             "solvent": None,
             "salt": 0.0*moles/liter,
             "constraints": HBonds,
-             
         }
-        #prmtop = AmberPrmtopFile(work_dir+'/'+window+'/'+topology_file)
-        #inpcrd = AmberInpcrdFile(work_dir+'/'+window+'/'+coordinate_file)
         sim.path = path+window
         sim.coordinates = work_dir+'/'+window+'/'+coordinate_file
         sim.topology = work_dir+'/'+window+'/'+topology_file
         sim.phase = 'pull'
         sim.window = int(window[1:])
         system = sim.setup_system(settings, seed=None)
+
         if hasRestraints:
             guest_restraints = setup_restraints()
+            for rest in guest_restraints:
+                print(rest.phase['pull']['targets'][int(window[1:])] * angstroms)
             system = sim.add_openmm_restraints(
                 system,guest_restraints,sim.phase,sim.window
             )
+        system.addForce(pos_rest)
         simulation = sim.setup_simulation(system,settings)
         sim.minimize(simulation,save=False)
         state = simulation.context.getState(getEnergy=True,
-                                            getPositions=True)
+                                            getPositions=True,
+                                            getVelocities=True)
+        restrt = pmd.openmm.RestartReporter(path+window+'/'+str(hasRestraints)+'_openmm.rst7', 500)
+        restrt.report(simulation,state)
         totalEnergy = state.getPotentialEnergy() + state.getKineticEnergy()
         totalEnergy = totalEnergy.in_units_of(kilocalories_per_mole)
         #print(window,"restraints =",hasRestraints,totalEnergy)
