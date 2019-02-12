@@ -1,11 +1,9 @@
 import parmed as pmd
-from paprika.openmm import *
 from simtk.openmm import *
 import simtk.openmm.openmm as mm
 import simtk.unit as unit
 import simtk.openmm.app as app
 from mdtraj.reporters import NetCDFReporter
-from sys import stdout
 
 def test_openmm_etoh_sim():
     path = './etoh_test/sim_openmm/'
@@ -43,10 +41,10 @@ def test_openmm_etoh_sim():
     simulation.context.setPositions(inpcrd.positions)
     simulation.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
 
-    simulation.reporters.append(NetCDFReporter(path+'etoh_openmm.nc', 500))
+    simulation.reporters.append(NetCDFReporter(path+'etoh_openmm.nc', 250))
     simulation.reporters.append(
         app.StateDataReporter(
-            path+md_out, 500,
+            path+md_out, 250,
             step=True,
             time=True,
             potentialEnergy=True,
@@ -58,9 +56,9 @@ def test_openmm_etoh_sim():
         )
     )
     
-    simulation.step(10000)
+    simulation.step(100000)
 
-def getEnergy(md_out):
+def printEnergy(md_out):
     with open(md_out, 'r') as f:
         data = [line.strip().split(',') for line in f]
     for item in data[1:]:
@@ -68,8 +66,29 @@ def getEnergy(md_out):
         energy = energy.in_units_of(unit.kilocalories_per_mole)
         print('Total Energy:', energy)
 
+def plotEnergy(md_out):
+    import matplotlib.pyplot as plt
+    import numpy as np
+    time = []
+    energy = []
+    with open(md_out, 'r') as f:
+        data = [line.strip().split(',') for line in f]
+    for item in data[1:]:
+        time.append(round(float(item[1]),1))
+        e = float(item[4])*unit.kilojoules_per_mole
+        e = e.in_units_of(unit.kilocalories_per_mole)/unit.kilocalories_per_mole
+        energy.append(e)
+    x = np.array(time)
+    y = np.array(energy)
+    fig, ax = plt.subplots()
+    ax.set_xlabel('time (picoseconds)')
+    ax.set_ylabel('energy (kcal/mol)')
+    ax.plot(x,y)
+    plt.show()
+
 path = './etoh_test/sim_openmm/'
 md_out = 'etoh_openmm.csv'
 
-test_openmm_etoh_sim()
-getEnergy(path+md_out)
+#test_openmm_etoh_sim()
+#printEnergy(path+md_out)
+plotEnergy(path+md_out)
