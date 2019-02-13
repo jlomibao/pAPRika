@@ -37,21 +37,15 @@ def plotEnergy(md_out,hist=False):
     import numpy as np
     time = []
     energy = []
-    count1 = 0
-    count2 = 0
     with open(md_out, 'r') as f:
         lines = f.readlines()
         for i, line in enumerate(lines):
             if re.search('NSTEP',line):
-                count1 +=1
                 cols = line.strip().split()
                 time.append(round(float(cols[5]),1))
             if re.search('Etot',line):
-                count2 +=1
                 cols = line.strip().split()
                 energy.append(float(cols[2]))
-                if (count2!=count1):
-                    print(count2,count1,time[-1],energy[-1])
 
     x = np.array(time[:-2])
     y = np.array(energy[:-2])
@@ -72,4 +66,4 @@ path = './etoh_test/sim_amber/'
 md_out = 'etoh_amber.out'
 
 test_amber_etoh_sim()
-#plotEnergy(path+md_out)
+#plotEnergy(path+md_out,hist=True)
