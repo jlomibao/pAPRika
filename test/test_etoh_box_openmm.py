@@ -66,7 +66,7 @@ def printEnergy(md_out):
         energy = energy.in_units_of(unit.kilocalories_per_mole)
         print('Total Energy:', energy)
 
-def plotEnergy(md_out):
+def plotEnergy(md_out,hist=False):
     import matplotlib.pyplot as plt
     import numpy as np
     time = []
@@ -85,10 +85,15 @@ def plotEnergy(md_out):
     ax.set_ylabel('energy (kcal/mol)')
     ax.plot(x,y)
     plt.show()
+    if hist == True:
+        plt.hist(y, 50, alpha=1.0)
+        plt.xlabel('energy kcal/mol')
+        plt.ylabel('count')
+        plt.show()
 
 path = './etoh_test/sim_openmm/'
 md_out = 'etoh_openmm.csv'
 
 #test_openmm_etoh_sim()
 #printEnergy(path+md_out)
-plotEnergy(path+md_out)
+plotEnergy(path+md_out,hist=True)
