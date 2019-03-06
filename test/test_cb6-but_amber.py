@@ -13,12 +13,12 @@ def test_amber_cb6but_sim():
     sim.topology = topology
 
     sim.cntrl['nmropt'] = 0 # No NMR analysis
-    sim.cntrl['barostat'] = 0 # Monte Carlo barostat
+    sim.cntrl['barostat'] = 2 # Monte Carlo barostat
     sim.cntrl['ntb'] = 0 # no periodic boundary
     sim.cntrl['ntp'] = 0 # no pressure scaling
-    sim.cntrl['ntf'] = 2 # bond interactions involving H-atoms omitted
-    sim.cntrl['ntc'] = 2 # bonds involving hydrogen constrained
-    sim.cntrl['nstlim'] = 1000 # number of steps
+    sim.cntrl['ntf'] = 1 # Complete interaction is calculated
+    sim.cntrl['ntc'] = 1 # SHAKE is not performed
+    sim.cntrl['nstlim'] = 100000 # number of steps
     sim.cntrl['ntwx'] = 250 # write to coordinate file every ntwx steps
     sim.cntrl['ntpr'] = 250 # print to mdout every ntpr steps
     sim.cntrl['ntwprt'] = 0 # include all atoms of system when writing traj

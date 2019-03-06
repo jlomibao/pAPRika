@@ -4,7 +4,6 @@ import simtk.unit as unit
 import simtk.openmm.app as app
 from mdtraj.reporters import NetCDFReporter
 
-# Need to change simulation settings
 def test_openmm_cb6but_sim():
     path = './cb6-but_test/guest_inside/'
     topology = 'cb6-but-dum.prmtop'
@@ -15,9 +14,7 @@ def test_openmm_cb6but_sim():
     inpcrd = app.AmberInpcrdFile(path+coordinates)
 
     settings = {
-        'nonbonded_method': app.PME,
-        'nonbonded_cutoff': 9*unit.angstrom,
-        'constraints': app.HBonds,
+        'nonbonded_method': app.NoCutoff,
         'temperature': 298.15*unit.kelvin,
         'friction': 1/unit.picosecond,
         'timestep': 0.002*unit.picosecond
@@ -25,11 +22,7 @@ def test_openmm_cb6but_sim():
 
     system = prmtop.createSystem(
         nonbondedMethod = settings['nonbonded_method'],
-        nonbondedCutoff = settings['nonbonded_cutoff'],
-        constraints = settings['constraints']
     )
-    barostat = mm.MonteCarloBarostat(1.0*unit.bar,298.15*unit.kelvin,25)
-    system.addForce(barostat)
 
     integrator = LangevinIntegrator(
         settings['temperature'],
@@ -39,7 +32,6 @@ def test_openmm_cb6but_sim():
 
     simulation = app.Simulation(prmtop.topology, system, integrator, mm.Platform.getPlatformByName('CPU'))
     simulation.context.setPositions(inpcrd.positions)
-    simulation.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
 
     simulation.reporters.append(NetCDFReporter(path+'cb6_but_openmm.nc', 250))
     simulation.reporters.append(
@@ -56,5 +48,6 @@ def test_openmm_cb6but_sim():
         )
     )
 
-    simulation.step(1000)
+    simulation.step(100000)
 
+test_openmm_cb6but_sim()
