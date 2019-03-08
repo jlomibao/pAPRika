@@ -22,6 +22,7 @@ def test_openmm_cb6but_sim():
 
     system = prmtop.createSystem(
         nonbondedMethod = settings['nonbonded_method'],
+        implicitSolvent = app.HCT
     )
 
     integrator = LangevinIntegrator(
