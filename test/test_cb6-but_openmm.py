@@ -3,12 +3,12 @@ from simtk.openmm import *
 import simtk.openmm.openmm as mm
 import simtk.unit as unit
 import simtk.openmm.app as app
-from mdtraj.reporters import NetCDFReporter
+from parmed.openmm.reporters import NetCDFReporter
 import parmed as pmd
 import pytraj as pt
 
-def test_openmm_cb6but_sim(num_rests=0):
-    path = './cb6-but_test/guest_inside/'
+def test_openmm_cb6but_sim(num_rests=0, guest_pos='guest_inside'):
+    path = './cb6-but_test/'+guest_pos+'/'
     topology = 'cb6-but-dum.prmtop'
     coordinates = 'cb6-but-dum.rst7'
     
@@ -61,13 +61,15 @@ def test_openmm_cb6but_sim(num_rests=0):
         'friction': 1/unit.picosecond,
         'timestep': 0.002*unit.picosecond,
         'implicit_solvent': app.HCT,
-        'numsteps': 500000
+        'dist_fc': 5.0,
+        'angle_fc': 100.0,
+        'numsteps': 500000,
     }
 
     system = prmtop.createSystem(
         nonbondedMethod = settings['nonbonded_method'],
         implicitSolvent = settings['implicit_solvent'],
-        removeCMMotion=False,
+        removeCMMotion = False,
     )
 
     integrator = LangevinIntegrator(
@@ -99,7 +101,7 @@ def test_openmm_cb6but_sim(num_rests=0):
     dist_restraint.addPerBondParameter('r0')
 
     r0 = static_init_dist * unit.angstroms
-    k = 100 * unit.kilocalories_per_mole / unit.angstroms**2
+    k = settings['dist_fc'] * unit.kilocalories_per_mole / unit.angstroms**2
 
     dist_restraint.addBond(D_i[0], H_i[0], [k, r0])
     static_restraints.append(dist_restraint)
@@ -113,7 +115,7 @@ def test_openmm_cb6but_sim(num_rests=0):
     angle_restraint_1.addPerAngleParameter('theta0')
 
     theta0 = static_init_angle_1 * unit.degrees
-    k = 100 * unit.kilocalories_per_mole / unit.radians**2
+    k = settings['angle_fc'] * unit.kilocalories_per_mole / unit.radians**2
 
     angle_restraint_1.addAngle(D_i[1], D_i[0], H_i[0], [k, theta0])
     static_restraints.append(angle_restraint_1)
@@ -127,12 +129,53 @@ def test_openmm_cb6but_sim(num_rests=0):
     dihedral_restraint_1.addPerTorsionParameter('theta0')
 
     theta0 = static_init_dihedral_1 * unit.degrees
-    k = 100 * unit.kilocalories_per_mole / unit.radians**2
+    k = settings['angle_fc'] * unit.kilocalories_per_mole / unit.radians**2
 
     dihedral_restraint_1.addTorsion(D_i[2], D_i[1], D_i[0], H_i[0], [k, theta0])
     static_restraints.append(dihedral_restraint_1)
 
-    # angle/dihedral restraints in unit.kilocalories+per_mole / unit.radians**2
+    # Create Angle Restraint 2
+    static_angle_rest_2 = [D[0], H[0], H[1]]
+    static_init_angle_2 = pt.angle(traj, D[0]+' '+H[0]+' '+H[1])[0]
+
+    angle_restraint_2 = mm.CustomAngleForce('0.5*k*(theta-theta0)^2')
+    angle_restraint_2.addPerAngleParameter('k')
+    angle_restraint_2.addPerAngleParameter('theta0')
+
+    theta0 = static_init_angle_2 * unit.degrees
+    k = settings['angle_fc'] * unit.kilocalories_per_mole / unit.radians**2
+
+    angle_restraint_2.addAngle(D_i[0], H_i[0], H_i[1], [k, theta0])
+    static_restraints.append(angle_restraint_2)
+
+    # Create Dihedral Restraint 2
+    static_dihedral_rest_2 = [D[1], D[0], H[0], H[1]]
+    static_init_dihedral_2 = pt.dihedral(traj, D[1]+' '+D[0]+' '+H[0]+' '+H[1])[0]
+
+    dihedral_restraint_2 = mm.CustomTorsionForce('0.5*k*(theta-theta0)^2')
+    dihedral_restraint_2.addPerTorsionParameter('k')
+    dihedral_restraint_2.addPerTorsionParameter('theta0')
+
+    theta0 = static_init_dihedral_2 * unit.degrees
+    k = settings['angle_fc'] * unit.kilocalories_per_mole / unit.radians**2
+
+    dihedral_restraint_2.addTorsion(D_i[1], D_i[0], H_i[0], H_i[1], [k, theta0])
+    static_restraints.append(dihedral_restraint_2)
+
+    # Create Dihedral Restraint 3
+    static_dihedral_rest_3 = [D[0], H[0], H[1], H[2]]
+    static_init_dihedral_3 = pt.dihedral(traj, D[0]+' '+H[0]+' '+H[1]+' '+H[2])[0]
+
+    dihedral_restraint_3 = mm.CustomTorsionForce('0.5*k*(theta-theta0)^2')
+    dihedral_restraint_3.addPerTorsionParameter('k')
+    dihedral_restraint_3.addPerTorsionParameter('theta0')
+
+    theta0 = static_init_dihedral_3 * unit.degrees
+    k = settings['angle_fc'] * unit.kilocalories_per_mole / unit.radians**2
+
+    dihedral_restraint_3.addTorsion(D_i[0], H_i[0], H_i[1], H_i[2], [k, theta0])
+    static_restraints.append(dihedral_restraint_3)
+
     #system.addForce(pos_restraint)
 
     if num_rests > 0:
@@ -159,4 +202,4 @@ def test_openmm_cb6but_sim(num_rests=0):
 
     simulation.step(settings['numsteps'])
 
-test_openmm_cb6but_sim(num_rests=0)
+test_openmm_cb6but_sim(num_rests=6, guest_pos='guest_outside')
