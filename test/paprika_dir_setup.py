@@ -10,6 +10,7 @@ from paprika import restraints
 from paprika.restraints import DAT_restraint
 from paprika.restraints import static_DAT_restraint
 from paprika.restraints import create_window_list
+from paprika.restraints import amber_restraint_line
 import paprika.restraints_json as rjson
 
 host = ":CB6"
@@ -61,15 +62,13 @@ static_restraint_angle_fc = 100.0
 
 # Guest Restraints
 guest_distance_rest = [D[0], G[0]]
-guest_angle_rest1 = [D[1], D[0], G[0]]
-guest_angle_rest2 = [D[0], G[0], G[1]]
+#guest_angle_rest1 = [D[1], D[0], G[0]]
+#guest_angle_rest2 = [D[0], G[0], G[1]]
 guest_restraint_atoms = [
     guest_distance_rest,
-    guest_angle_rest1,
-    guest_angle_rest2
 ]
-guest_restraint_targets = [guest_init_dist, 180.0, 180.0]
-guest_restraint_target_final = [18.0+guest_init_dist, 180.0, 180.0]
+guest_restraint_targets = [guest_init_dist]
+guest_restraint_target_final = [18.0+guest_init_dist]
 guest_restraint_distance_fc = 5.0
 guest_restraint_angle_fc = 100.0
 
@@ -146,3 +145,7 @@ for window in window_list:
     elif window[0] == 'r':
         structure.save(path+window+'/'+coordinate_file)
         phase = "release"
+    with open(path+window+"/rest.in", 'w') as f:
+        for rest in static_restraints + guest_restraints:
+            string = amber_restraint_line(rest,window)
+            f.write(string)

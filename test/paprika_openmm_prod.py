@@ -24,9 +24,9 @@ settings = {
     "friction": 1/unit.picosecond,
     "timestep": 0.002*unit.picosecond,
     "implicit_solvent": app.HCT,
-    "num_steps": 500000,
+    "num_steps": 1000000,
     "write_freq": 250,
-    "traj_file": "openmm_equil.nc"
+    "traj_file": "openmm_prod.nc"
 }
 
 window_list = os.listdir(path)
@@ -42,7 +42,7 @@ for window in window_list:
         phase = "release"
     window_num = int(window[1:])
     
-    if os.path.exists(path+window+"/openmm_equil.rst7"):
+    if os.path.exists(path+window+"/openmm_prod.rst7"):
         continue
     
     integrator = LangevinIntegrator(
@@ -68,7 +68,7 @@ for window in window_list:
     structure.save(path+window+coordinates_0m, overwrite=True)
 
     prmtop = app.AmberPrmtopFile(path+window+topology_0m)
-    inpcrd = app.AmberInpcrdFile(path+window+coordinates_0m)
+    inpcrd = app.AmberInpcrdFile(path+window+"/openmm_equil.rst7")
 
     system = prmtop.createSystem(
         nonbondedMethod = settings["nonbonded_method"],
@@ -206,7 +206,7 @@ for window in window_list:
 
     simulation.context.setPositions(inpcrd.positions)
     simulation.minimizeEnergy()
-    simulation.context.setVelocitiesToTemperature(settings["temperature"])
+    simulation.context.setVelocities(inpcrd.velocities)
 
     simulation.reporters.append(
         NetCDFReporter(path+window+'/'+settings["traj_file"],
@@ -215,7 +215,7 @@ for window in window_list:
 
     simulation.reporters.append(
         app.StateDataReporter(
-            path + window + "/openmm_equil.log",
+            path + window + "/openmm_prod.log",
             settings["write_freq"],
             step=True,
             potentialEnergy=True,
@@ -226,7 +226,7 @@ for window in window_list:
 
     simulation.reporters.append(
         RestartReporter(
-            path + window + "/openmm_equil.rst7",
+            path + window + "/openmm_prod.rst7",
             settings["num_steps"]
         )
     )
