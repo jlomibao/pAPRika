@@ -196,6 +196,34 @@ for window in window_list:
     angle_restraint_g1.addPerAngleParameter("k")
     angle_restraint_g1.addPerAngleParameter("theta0")
 
+    rest = rests[7] # second guest restraint
+    guest_angle1 = rest.phase[phase]["targets"][window_num]
+    angle_fc = rest.phase[phase]["force_constants"][window_num]
+    theta0 = guest_angle1 * unit.degrees
+    k = angle_fc * unit.kilocalories_per_mole / unit.radians**2
+
+    a1 = utils.index_from_mask(structure, mask=rest.mask1, amber_index=False)
+    a2 = utils.index_from_mask(structure, mask=rest.mask2, amber_index=False)
+    a3 = utils.index_from_mask(structure, mask=rest.mask3, amber_index=False)
+    angle_restraint_g1.addAngle(a1[0], a2[0], a3[0], [k, theta0])
+    static_restraints.append(angle_restraint_g1)
+ 
+    angle_restraint_g2 = mm.CustomAngleForce("0.5*k*(theta-theta0)^2")
+    angle_restraint_g2.addPerAngleParameter("k")
+    angle_restraint_g2.addPerAngleParameter("theta0")
+
+    rest = rests[8] # third guest restraint
+    guest_angle2 = rest.phase[phase]["targets"][window_num]
+    angle_fc = rest.phase[phase]["force_constants"][window_num]
+    theta0 = guest_angle2 * unit.degrees
+    k = angle_fc * unit.kilocalories_per_mole / unit.radians**2
+
+    a1 = utils.index_from_mask(structure, mask=rest.mask1, amber_index=False)
+    a2 = utils.index_from_mask(structure, mask=rest.mask2, amber_index=False)
+    a3 = utils.index_from_mask(structure, mask=rest.mask3, amber_index=False)
+    angle_restraint_g2.addAngle(a1[0], a2[0], a3[0], [k, theta0])
+    static_restraints.append(angle_restraint_g2)
+
     for rest in static_restraints+guest_restraints:
         system.addForce(rest)
     #system.addForce(barostat)

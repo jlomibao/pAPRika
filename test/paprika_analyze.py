@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logging.getLogger().setLevel(logging.DEBUG)
 logging.info('Started logging...')
 
-sim_type = "amber"
+sim_type = sys.argv[1]
 
 window_dir = "windows_apr"
 
@@ -25,7 +25,7 @@ rests = rjson.load_restraints()
 
 phases = ["attach", "pull", "release"]
 
-guest_restraints = [rests[-1]]
+guest_restraints = rests[-3:]
 
 analyze = fe_calc()
 analyze.prmtop = structure.topology
@@ -35,14 +35,14 @@ analyze.path = window_dir
 analyze.restraint_list = guest_restraints
 analyze.collect_data()
 method = ["ti-block", "mbar-block"]
-m = method[0]
+m = method[1]
 analyze.methods = [m]
 if m == "ti-block":
     analyze.quicker_ti_matrix = True
 analyze.bootcycles = 2000
 analyze.compute_free_energy(phases)
 analyze.compute_ref_state_work(
-    [guest_restraints[0], None, None, None, None, None]
+    [guest_restraints[0], guest_restraints[1], None, None, guest_restraints[2], None]
 )
 
 results = analyze.results
